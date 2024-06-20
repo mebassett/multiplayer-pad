@@ -6,6 +6,7 @@ import { Repo, isValidAutomergeUrl} from "@automerge/automerge-repo"
 import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket"
 import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb"
 import { RepoContext } from "@automerge/automerge-repo-react-hooks"
+import {Text, next as Automerge } from "@automerge/automerge"
 
 import { MyDoc } from "./types.ts"
 
@@ -17,9 +18,10 @@ const repo = new Repo({ network: [new BrowserWebSocketClientAdapter("ws://localh
 
 const rootDocUrl = `${document.location.hash.substring(1)}`
 
+console.log(new Text());
 const handle = isValidAutomergeUrl(rootDocUrl) 
              ? repo.find(rootDocUrl) 
-             : repo.create<MyDoc>({ count: 0 })
+             : repo.create<MyDoc>({ text: null })
 const docUrl = (document.location.hash = handle.url)
 
 
