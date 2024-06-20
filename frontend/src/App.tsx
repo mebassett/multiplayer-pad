@@ -1,5 +1,5 @@
 import './App.css'
-import Editor from '@monaco-editor/react'
+import Editor, { monaco } from '@monaco-editor/react'
 import { AutomergeUrl } from '@automerge/automerge-repo'
 import { useDocument } from '@automerge/automerge-repo-react-hooks'
 import { MyDoc } from "./types.ts"
@@ -8,21 +8,23 @@ import { MyDoc } from "./types.ts"
 function App({ url } : { url: AutomergeUrl} ) {
   const [doc, changeDoc] = useDocument<MyDoc>(url) 
 
+  function onMonacoChange(newValue: string, e: monaco.IModelContentChangedEvent): void {
+    changeDoc((d: any) => { d.count = (d.count || 0) + 1})
+    console.log(e.changes)
+  }
 
   return (
     <>
         <h1>Hello, world!</h1>
-        <button 
-          onClick={ () => {
-              console.log("clicked...")
-              changeDoc((d: any) => {
-                  d.count = (d.count || 0) +1
-              })
-          }}>
 
-          Count: {doc?.count ?? 0 }
-        </button>
-        <Editor height="90vh" width="80vw" defaultLanguage="javascript" defaultValue="// multiplayer pad" />
+        <p> 
+          Count: <strong>{doc?.count ?? 0 }</strong>
+        </p>
+        <Editor height="90vh"
+                width="80vw" 
+                onChange={onMonacoChange}
+                defaultLanguage="javascript" 
+                defaultValue="// multiplayer pad" />
 
     </>
   )
