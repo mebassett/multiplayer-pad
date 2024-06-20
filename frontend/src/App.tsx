@@ -4,17 +4,19 @@ import {Text, next as Automerge } from "@automerge/automerge"
 import { AutomergeUrl } from '@automerge/automerge-repo'
 import { useDocument } from '@automerge/automerge-repo-react-hooks'
 import { MyDoc } from "./types.ts"
+import { next as A } from "@automerge/automerge"
 
 
 function App({ url } : { url: AutomergeUrl} ) {
   const [doc, changeDoc] = useDocument<MyDoc>(url) 
 
   function onMonacoChange(newValue: string, e: monaco.IModelContentChangedEvent): void {
-    changeDoc((d: MyDoc) => {
-        d.text = newValue
 
+
+    changeDoc((d: MyDoc) => {
+        A.updateText(d, ["text"], newValue)
     })         
-    console.log(e.changes)
+    //console.log(e.changes)
   }
 
   return (
