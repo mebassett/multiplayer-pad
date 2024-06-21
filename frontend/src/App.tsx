@@ -9,11 +9,11 @@ import {useRef} from 'react'
 
 
 function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
-  const [doc, changeDoc] = useDocument<MyDoc>(url) 
+  const changeDoc = useDocument<MyDoc>(url)[1]
 
   const repo = useRepo()
 
-  const handle = useHandle<EditorState>(url) || repo.create()
+  const handle = useHandle<MyDoc>(url) || repo.create()
 
   const editorRef = useRef(null as null | editor.IStandaloneCodeEditor)
 
@@ -22,8 +22,6 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
       , userId
       , initialState: { cursorPosition: {lineNumber: 1, column:1 }}
       })
-
-  console.log(localState)
 
 
   const [peerStates, _] = useRemoteAwareness({ handle, localUserId: userId})
@@ -49,8 +47,12 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
 
   handle.update( d => {
     if(editorRef.current) {
-      // editorRef.current.setPosition(localState.cursorPosition)
-      console.log("set cursor position?", localState.cursorPosition)
+      editorRef.current.executeEdits('', [{
+          range: editorRef.current.getModel()!.getFullModelRange()
+        , text: d.text
+        , forceMoveMarkers: false
+      }])
+      
     }
     return d;
   })
@@ -65,7 +67,6 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
         <Editor height="90vh"
                 width="80vw" 
                 onChange={onMonacoChange}
-                value={doc?.text || "// multiplayer pad"}
                 onMount={handleEditorDidMount}
                 defaultLanguage="javascript" 
 
