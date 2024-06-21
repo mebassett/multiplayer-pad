@@ -1,3 +1,4 @@
-import {Text  } from "@automerge/automerge"
 
-export type MyDoc = { text: Text } 
+export type MyDoc = { text: string } 
+
+export type EditorState = { cursorPosition: { lineNumber: number, column: number} }
