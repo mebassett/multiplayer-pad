@@ -18,6 +18,8 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
 
   const editorRef = useRef(null as null | editor.IStandaloneCodeEditor)
 
+  const decorationsRef = useRef(null as null | editor.IEditorDecorationsCollection)
+
   const [localState, updateLocalState] = useLocalAwareness(
       { handle
       , userId
@@ -37,7 +39,6 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
       })
 
       handle.whenReady().then( () => {
-        console.log("test")
         return handle.doc()
 
       }).then ( doc => {
@@ -64,12 +65,13 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
         return newDoc
     }
     if(editorRef.current) {
+
       const doc = A.clone(docRef.current)
 
       const binaryChanges = A.getChanges(doc, newDoc)
       A.applyChanges(doc, binaryChanges, { patchCallback: (patches) => {
 
-          const edits = patches.map( (patch:any): editor.IIdentifiedSingleEditOperation => {
+          const edits = patches.map( (patch:any): editor.IIdentifiedSingleEditOperation | null => {
             if(patch.action === 'splice') {
               const { lineNumber: line, column: col } = editorRef.current!.getModel()!.getPositionAt(patch.path[1])
               return { range: new Range(line, col, line, col)
@@ -83,17 +85,36 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
                      , text: null
                      , forceMoveMarkers: true
                      }
-            } else return { range: new Range(0,0,0,0), text: null }
-          })
+            } else return null
+          }).filter ( (a) : a is editor.IIdentifiedSingleEditOperation => !!a)
           if(newDoc.text !== doc.text && newDoc.text !== editorRef.current!.getModel()!.getValue())
             editorRef.current!.executeEdits('automerge', edits)
 
       }})  
       
+
+      if(decorationsRef.current)
+        decorationsRef.current.clear()
+
+      const decorations =
+        Object.keys(peerStates).map( (uid: string): editor.IModelDeltaDecoration => ({
+           range: new Range( peerStates[uid].cursorPosition.lineNumber
+                           , peerStates[uid].cursorPosition.column
+                           , peerStates[uid].cursorPosition.lineNumber
+                           , peerStates[uid].cursorPosition.column)
+         , options: { hoverMessage: { value: uid }
+                    , className: "fakeCursor"
+                    }
+         }))
+      decorationsRef.current = editorRef.current.createDecorationsCollection(decorations)
+
     }
+
     docRef.current = newDoc
     return newDoc
   })
+
+
 
   return (
     <>
@@ -106,7 +127,7 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
                 width="80vw" 
                 onChange={onMonacoChange}
                 onMount={handleEditorDidMount}
-                defaultLanguage="javascript" 
+                defaultLanguage="typescript" 
 
                 defaultValue={docRef.current ? docRef.current.text : emptyText} />
 
