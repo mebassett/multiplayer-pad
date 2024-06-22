@@ -8,7 +8,7 @@ import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-index
 import { RepoContext } from "@automerge/automerge-repo-react-hooks"
 import { next as A } from "@automerge/automerge"
 
-import { MyDoc } from "./types.ts"
+import { MyDoc, emptyText } from "./types.ts"
 
 const repo = new Repo({ network: [new BrowserWebSocketClientAdapter(`ws://${location.hostname}:3030`)]
                       , storage: new IndexedDBStorageAdapter("qawolf-multiplayer-pad")
@@ -20,7 +20,7 @@ const rootDocUrl = `${document.location.hash.substring(1)}`
 
 const handle = isValidAutomergeUrl(rootDocUrl) 
              ? repo.find(rootDocUrl) 
-             : repo.create<MyDoc>(A.from({ text: "// start multiplayer editing" }))
+             : repo.create<MyDoc>(A.from({ text: emptyText }))
 const docUrl = (document.location.hash = handle.url)
 
 const userId = `${Math.random()}` // this is not a good idea.
