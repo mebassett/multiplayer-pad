@@ -40,3 +40,8 @@
 .read-the-docs {
   color: #888;
 }
+
+.fakeCursor {
+  background: green;
+  width: 2px !important;
+}
