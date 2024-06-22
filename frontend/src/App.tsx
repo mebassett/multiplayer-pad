@@ -1,19 +1,20 @@
 import './App.css'
 import Editor from '@monaco-editor/react'
-import { type editor } from 'monaco-editor';
+import { Range, type editor } from 'monaco-editor';
 import { AutomergeUrl } from '@automerge/automerge-repo'
-import { useRepo, useHandle, useLocalAwareness, useRemoteAwareness, useDocument } from '@automerge/automerge-repo-react-hooks'
-import { MyDoc, EditorState } from "./types.ts"
+import { useRepo, useHandle, useLocalAwareness, useRemoteAwareness } from '@automerge/automerge-repo-react-hooks'
+import { emptyText, MyDoc, EditorState } from "./types.ts"
 import { next as A } from "@automerge/automerge"
 import {useRef} from 'react'
 
 
 function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
-  const changeDoc = useDocument<MyDoc>(url)[1]
 
   const repo = useRepo()
 
-  const handle = useHandle<MyDoc>(url) || repo.create()
+  const handle = useHandle<MyDoc>(url) || repo.find(url)
+
+  let docRef = useRef(handle.docSync() as MyDoc | undefined) //A.init<MyDoc>()
 
   const editorRef = useRef(null as null | editor.IStandaloneCodeEditor)
 
@@ -34,27 +35,64 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
       _editor.onMouseDown(() => {
           updateLocalState((s: EditorState) => ({...s, cursorPosition: _editor.getPosition() }))
       })
+
+      handle.whenReady().then( () => {
+        console.log("test")
+        return handle.doc()
+
+      }).then ( doc => {
+        _editor.executeEdits('', [{
+            range: _editor.getModel()!.getFullModelRange()
+          , text: doc!.text
+          , forceMoveMarkers: false
+        }])
+      })
   }
 
 
   function onMonacoChange(newValue: string | undefined) : void { //, e: Monaco.IModelContentChangedEvent): void {
 
 
-    changeDoc((d: MyDoc) => {
+    handle.change((d: MyDoc) => {
         A.updateText(d, ["text"], newValue || "")
     })
   }
 
-  handle.update( d => {
+  handle.update( newDoc => {
+    if(!docRef.current){
+        docRef.current = newDoc
+        return newDoc
+    }
     if(editorRef.current) {
-      editorRef.current.executeEdits('', [{
-          range: editorRef.current.getModel()!.getFullModelRange()
-        , text: d.text
-        , forceMoveMarkers: false
-      }])
+      const doc = A.clone(docRef.current)
+
+      const binaryChanges = A.getChanges(doc, newDoc)
+      A.applyChanges(doc, binaryChanges, { patchCallback: (patches) => {
+
+          const edits = patches.map( (patch:any): editor.IIdentifiedSingleEditOperation => {
+            if(patch.action === 'splice') {
+              const { lineNumber: line, column: col } = editorRef.current!.getModel()!.getPositionAt(patch.path[1])
+              return { range: new Range(line, col, line, col)
+                     , text: patch.value
+                     , forceMoveMarkers: true
+                     }
+            }else if (patch.action === 'del') {
+              const { lineNumber: sLine, column: sCol } = editorRef.current!.getModel()!.getPositionAt(patch.path[1])
+              const { lineNumber: eLine, column: eCol } = editorRef.current!.getModel()!.getPositionAt(patch.path[1] + (patch.length || 1))
+              return { range: new Range(sLine, sCol, eLine, eCol)
+                     , text: null
+                     , forceMoveMarkers: true
+                     }
+            } else return { range: new Range(0,0,0,0), text: null }
+          })
+          if(newDoc.text !== doc.text && newDoc.text !== editorRef.current!.getModel()!.getValue())
+            editorRef.current!.executeEdits('automerge', edits)
+
+      }})  
       
     }
-    return d;
+    docRef.current = newDoc
+    return newDoc
   })
 
   return (
@@ -70,7 +108,7 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
                 onMount={handleEditorDidMount}
                 defaultLanguage="javascript" 
 
-                defaultValue="// multiplayer pad" />
+                defaultValue={docRef.current ? docRef.current.text : emptyText} />
 
     </>
   )
