@@ -6,9 +6,10 @@ import { useRepo, useHandle, useLocalAwareness, useRemoteAwareness } from '@auto
 import { emptyText, MyDoc, EditorState } from "./types.ts"
 import { view, next as A } from "@automerge/automerge"
 import {ChangeEvent, useRef} from 'react'
+import { patchesToEdits } from './patches.ts'
 
 
-function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
+export function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
 
   const repo = useRepo()
 
@@ -91,22 +92,10 @@ function App({ userId, url } : { userId: string, url: AutomergeUrl} ) {
       const doc = e.patchInfo.before
       const newDoc = e.patchInfo.after
       if(newDoc.text !== doc.text && newDoc.text !== editorRef.current!.getModel()!.getValue()) {
-        const edits = e.patches.map( (patch:any): editor.IIdentifiedSingleEditOperation | null => {
-          if(patch.action === 'splice') {
-            const { lineNumber: line, column: col } = editorRef.current!.getModel()!.getPositionAt(patch.path[1])
-            return { range: new Range(line, col, line, col)
-                   , text: patch.value
-                   , forceMoveMarkers: true
-                   }
-          }else if (patch.action === 'del') {
-            const { lineNumber: sLine, column: sCol } = editorRef.current!.getModel()!.getPositionAt(patch.path[1])
-            const { lineNumber: eLine, column: eCol } = editorRef.current!.getModel()!.getPositionAt(patch.path[1] + (patch.length || 1))
-            return { range: new Range(sLine, sCol, eLine, eCol)
-                   , text: null
-                   , forceMoveMarkers: true
-                   }
-          } else return null
-        }).filter ( (a) : a is editor.IIdentifiedSingleEditOperation => !!a)
+        const edits = 
+          e.patches
+           .map(patchesToEdits(editorRef.current!.getModel()!))
+           .filter ( (a) : a is editor.IIdentifiedSingleEditOperation => !!a)
         editorRef.current!.executeEdits('automerge', edits)
       }
       docRef.current = newDoc
