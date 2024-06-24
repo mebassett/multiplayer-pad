@@ -7,5 +7,6 @@ import checker from 'vite-plugin-checker'
 export default defineConfig({
   plugins: [wasm(),react(), checker({ typescript: true})],
   worker: { format: "es", plugins: () => [wasm()], },
-  server: { host: true }
+  server: { host: true },
+  build: { target: 'es2022' }
 })
